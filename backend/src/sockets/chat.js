@@ -1,10 +1,8 @@
 const jwt = require("jsonwebtoken");
 const Message = require("../models/Message");
 const Conversation = require("../models/Conversation");
+const { containsProfanity, cleanText } = require("../middleware/profanityFilter");
 
-// Real-time layer for mentor <-> user chat. Auth via JWT passed in the
-// socket handshake so anonymous identities are preserved (no PII travels
-// over the socket beyond the user's own id, used only server-side).
 function registerChatSocket(io) {
   io.use((socket, next) => {
     try {
@@ -25,10 +23,19 @@ function registerChatSocket(io) {
 
     socket.on("send_message", async ({ conversationId, content, fileUrl }) => {
       try {
+        if (!content || !content.trim()) return;
+
+        const convo = await Conversation.findById(conversationId);
+        if (!convo || !convo.participants.some((p) => p.toString() === socket.userId)) {
+          return socket.emit("chat_error", { message: "You're not part of this conversation" });
+        }
+
+        const safeContent = containsProfanity(content) ? cleanText(content) : content;
+
         const message = await Message.create({
           conversation: conversationId,
           sender: socket.userId,
-          content,
+          content: safeContent,
           fileUrl: fileUrl || null,
         });
         await Conversation.findByIdAndUpdate(conversationId, { lastMessageAt: new Date() });

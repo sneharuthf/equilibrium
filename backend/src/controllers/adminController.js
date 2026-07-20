@@ -120,3 +120,51 @@ exports.resolveReport = async (req, res, next) => {
     next(err);
   }
 };
+
+const Therapist = require("../models/Therapist");
+
+exports.listTherapists = async (req, res, next) => {
+  try {
+    const therapists = await Therapist.find({ isActive: true }).sort({ name: 1 });
+    res.json({ therapists });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.createTherapist = async (req, res, next) => {
+  try {
+    const therapist = await Therapist.create(req.body);
+    res.status(201).json({ therapist });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateTherapist = async (req, res, next) => {
+  try {
+    const therapist = await Therapist.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ therapist });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteTherapist = async (req, res, next) => {
+  try {
+    await Therapist.findByIdAndUpdate(req.params.id, { isActive: false });
+    res.json({ message: "Removed from active directory" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.recommendTherapist = async (req, res, next) => {
+  try {
+    const { userId, therapistId } = req.body;
+    const user = await User.findByIdAndUpdate(userId, { recommendedTherapist: therapistId }, { new: true });
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+};

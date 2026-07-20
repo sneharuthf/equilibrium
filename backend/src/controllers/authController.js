@@ -102,5 +102,25 @@ exports.resetPassword = async (req, res, next) => {
 };
 
 exports.me = async (req, res) => {
-  res.json({ user: req.user });
+  const user = await req.user.populate("recommendedTherapist", "name clinicName specialization contactEmail contactPhone");
+  res.json({ user });
+};
+
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const { emergencyContact } = req.body;
+    const update = {};
+    if (emergencyContact) {
+      update.emergencyContact = {
+        name: emergencyContact.name || "",
+        relationship: emergencyContact.relationship || "",
+        phone: emergencyContact.phone || "",
+        email: emergencyContact.email || "",
+      };
+    }
+    const user = await User.findByIdAndUpdate(req.user._id, update, { new: true });
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
 };

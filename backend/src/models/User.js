@@ -21,6 +21,14 @@ const userSchema = new mongoose.Schema(
     streakDays: { type: Number, default: 0 },
     lastCheckIn: { type: Date, default: null },
     assignedMentor: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    recommendedTherapist: { type: mongoose.Schema.Types.ObjectId, ref: "Therapist", default: null },
+
+    emergencyContact: {
+      name: { type: String, default: "" },
+      relationship: { type: String, default: "" },
+      phone: { type: String, default: "" },
+      email: { type: String, default: "" },
+    },
 
     passwordResetToken: { type: String, default: null },
     passwordResetExpires: { type: Date, default: null },

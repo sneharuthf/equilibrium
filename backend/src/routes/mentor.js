@@ -11,5 +11,7 @@ router.post("/conversations", requireAuth, ctrl.startConversation);
 router.get("/conversations", requireAuth, ctrl.listConversations);
 router.get("/conversations/:conversationId/messages", requireAuth, ctrl.listMessages);
 router.post("/conversations/:conversationId/messages", requireAuth, ctrl.sendMessage);
+router.post("/conversations/peer", requireAuth, ctrl.startPeerChat);
+router.post("/conversations/with-user", requireAuth, requireRole("mentor"), ctrl.startConversationAsMentor);
 
 module.exports = router;

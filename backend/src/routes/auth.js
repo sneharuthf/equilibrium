@@ -8,5 +8,6 @@ router.post("/google", ctrl.googleLogin);
 router.post("/forgot-password", ctrl.forgotPassword);
 router.post("/reset-password", ctrl.resetPassword);
 router.get("/me", requireAuth, ctrl.me);
+router.patch("/me", requireAuth, ctrl.updateProfile);
 
 module.exports = router;

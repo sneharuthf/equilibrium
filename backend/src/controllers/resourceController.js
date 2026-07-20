@@ -32,3 +32,14 @@ exports.remove = async (req, res, next) => {
     next(err);
   }
 };
+
+const Therapist = require("../models/Therapist");
+
+exports.listTherapistsPublic = async (req, res, next) => {
+  try {
+    const therapists = await Therapist.find({ isActive: true }).select("name clinicName specialization contactEmail contactPhone").sort({ name: 1 });
+    res.json({ therapists });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -11,5 +11,10 @@ router.patch("/users/:id/active", ctrl.setUserActive);
 router.post("/assign-mentor", ctrl.assignMentor);
 router.get("/reports", ctrl.listReports);
 router.patch("/reports/:id", ctrl.resolveReport);
+router.get("/therapists", ctrl.listTherapists);
+router.post("/therapists", ctrl.createTherapist);
+router.patch("/therapists/:id", ctrl.updateTherapist);
+router.delete("/therapists/:id", ctrl.deleteTherapist);
+router.post("/recommend-therapist", ctrl.recommendTherapist);
 
 module.exports = router;

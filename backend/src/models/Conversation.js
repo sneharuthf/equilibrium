@@ -2,13 +2,13 @@ const mongoose = require("mongoose");
 
 const conversationSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    mentor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    participants: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }],
+    type: { type: String, enum: ["mentor", "peer"], default: "mentor" },
     lastMessageAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
-conversationSchema.index({ user: 1, mentor: 1 }, { unique: true });
+conversationSchema.index({ participants: 1 });
 
 module.exports = mongoose.model("Conversation", conversationSchema);

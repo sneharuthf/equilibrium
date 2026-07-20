@@ -3,6 +3,7 @@ const ctrl = require("../controllers/resourceController");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 router.get("/", requireAuth, ctrl.list);
+router.get("/therapists", requireAuth, ctrl.listTherapistsPublic);
 router.post("/", requireAuth, requireRole("admin", "mentor"), ctrl.create);
 router.delete("/:id", requireAuth, requireRole("admin"), ctrl.remove);
 
