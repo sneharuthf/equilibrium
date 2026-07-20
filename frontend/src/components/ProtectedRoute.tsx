@@ -2,6 +2,12 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Role } from "../types";
 
+const homeByRole: Record<Role, string> = {
+  user: "/dashboard",
+  mentor: "/mentor",
+  admin: "/admin",
+};
+
 export default function ProtectedRoute({
   children,
   allow,
@@ -13,7 +19,7 @@ export default function ProtectedRoute({
 
   if (loading) return <div className="p-10 text-center text-gray-400">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (allow && !allow.includes(user.role)) return <Navigate to="/dashboard" replace />;
+  if (allow && !allow.includes(user.role)) return <Navigate to={homeByRole[user.role]} replace />;
 
   return <>{children}</>;
 }

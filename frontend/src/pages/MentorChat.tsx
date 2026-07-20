@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
 import { api } from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
+interface Participant {
+  _id: string;
+  anonymousUsername: string;
+  role: string;
+}
+
 interface Conversation {
   _id: string;
-  user: { _id: string; anonymousUsername: string };
-  mentor: { _id: string; anonymousUsername: string };
+  type: "mentor" | "peer";
+  participants: Participant[];
 }
 
 interface Message {
@@ -19,15 +26,45 @@ interface Message {
 
 export default function MentorChat() {
   const { user } = useAuth();
+  const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
+  const [starting, setStarting] = useState(false);
+  const activeIdRef = useRef<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  function otherParticipant(c: Conversation): Participant | undefined {
+    return c.participants.find((p) => p._id !== user?._id);
+  }
+
+  function loadConversations() {
+    return api.get("/mentor/conversations").then((res) => setConversations(res.data.conversations));
+  }
+
+  async function startChatWithMentor() {
+    if (!user?.assignedMentor) return;
+    setStarting(true);
+    try {
+      const res = await api.post("/mentor/conversations", { mentorId: user.assignedMentor });
+      await loadConversations();
+      setActiveId(res.data.conversation._id);
+    } finally {
+      setStarting(false);
+    }
+  }
+
   useEffect(() => {
-    api.get("/mentor/conversations").then((res) => setConversations(res.data.conversations));
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  useEffect(() => {
+    loadConversations().then(() => {
+      const incomingId = (location.state as any)?.conversationId;
+      if (incomingId) setActiveId(incomingId);
+    });
 
     const socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
       auth: { token: localStorage.getItem("equilibrium_token") },
@@ -35,7 +72,9 @@ export default function MentorChat() {
     socketRef.current = socket;
 
     socket.on("new_message", (msg: Message) => {
-      setMessages((prev) => (msg.conversation === activeId ? [...prev, msg] : prev));
+      if (msg.conversation === activeIdRef.current) {
+        setMessages((prev) => [...prev, msg]);
+      }
     });
 
     return () => {
@@ -61,24 +100,41 @@ export default function MentorChat() {
     setDraft("");
   }
 
+  const hasMentorChat = conversations.some((c) => c.type === "mentor");
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 grid md:grid-cols-3 gap-4" style={{ minHeight: "70vh" }}>
       <div className="card p-4 md:col-span-1">
         <h2 className="font-medium mb-3">Conversations</h2>
         <div className="space-y-2">
           {conversations.map((c) => {
-            const label = user?.role === "mentor" ? c.user.anonymousUsername : c.mentor.anonymousUsername;
+            const other = otherParticipant(c);
             return (
               <button
                 key={c._id}
                 onClick={() => setActiveId(c._id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm ${activeId === c._id ? "bg-equilibrium-soft text-equilibrium-blue" : "hover:bg-black/5"}`}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${activeId === c._id ? "bg-equilibrium-soft text-equilibrium-blue" : "hover:bg-black/5"}`}
               >
-                {label}
+                <span>{other?.anonymousUsername || "Unknown"}</span>
+                {c.type === "peer" && <span className="text-[10px] text-gray-400">peer</span>}
               </button>
             );
           })}
-          {conversations.length === 0 && <p className="text-sm text-gray-400">No conversations yet.</p>}
+          {conversations.length === 0 && user?.role === "user" && !user?.assignedMentor && (
+            <p className="text-sm text-gray-400">
+              You don't have a mentor assigned yet. Once an admin assigns one, you can start chatting here.
+            </p>
+          )}
+          {!hasMentorChat && user?.role === "user" && user?.assignedMentor && (
+            <button className="btn-primary w-full text-sm" onClick={startChatWithMentor} disabled={starting}>
+              {starting ? "Starting..." : "Start chat with your mentor"}
+            </button>
+          )}
+          {conversations.length === 0 && user?.role === "mentor" && (
+            <p className="text-sm text-gray-400">
+              No conversations yet — they'll appear here once you acknowledge an alert or a user reaches out.
+            </p>
+          )}
         </div>
       </div>
 

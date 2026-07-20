@@ -10,6 +10,7 @@ const linksByRole: Record<string, { to: string; label: string }[]> = {
     { to: "/journal", label: "Journal" },
     { to: "/chat", label: "Mentor Chat" },
     { to: "/resources", label: "Resources" },
+    { to: "/settings", label: "Settings" },
   ],
   mentor: [
     { to: "/mentor", label: "Mentor Dashboard" },

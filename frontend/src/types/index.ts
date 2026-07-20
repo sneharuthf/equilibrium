@@ -1,5 +1,22 @@
 export type Role = "user" | "mentor" | "admin";
 
+export interface EmergencyContact {
+  name: string;
+  relationship: string;
+  phone: string;
+  email: string;
+}
+
+export interface Therapist {
+  _id: string;
+  name: string;
+  clinicName: string;
+  specialization: string[];
+  contactEmail: string;
+  contactPhone: string;
+  notes?: string;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -10,6 +27,8 @@ export interface User {
   isFlaggedUrgent: boolean;
   assignedMentor?: string | null;
   mentorProfile?: { bio: string; specialties: string[] };
+  emergencyContact?: EmergencyContact;
+  recommendedTherapist?: Therapist | null;
 }
 
 export interface Post {

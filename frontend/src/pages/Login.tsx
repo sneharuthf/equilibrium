@@ -15,8 +15,10 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
-      navigate("/dashboard");
+      const loggedInUser = await login(email, password);
+      if (loggedInUser.role === "admin") navigate("/admin");
+      else if (loggedInUser.role === "mentor") navigate("/mentor");
+      else navigate("/dashboard");
     } catch (err: any) {
       setError(err?.response?.data?.message || "Login failed");
     } finally {

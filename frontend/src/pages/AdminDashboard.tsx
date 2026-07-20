@@ -22,6 +22,7 @@ interface Report {
 interface PlatformUser {
   _id: string;
   anonymousUsername: string;
+  email: string;
   role: string;
   mentalHealthScore: number;
   isFlaggedUrgent: boolean;
@@ -142,8 +143,9 @@ export default function AdminDashboard() {
         <div className="space-y-3">
           {users.map((u) => (
             <div key={u._id} className="flex flex-wrap items-center gap-3 border-b border-black/5 pb-3 last:border-0">
-              <div className="min-w-[140px]">
+              <div className="min-w-[200px]">
                 <p className="text-sm font-medium">{u.anonymousUsername}</p>
+                <p className="text-xs text-gray-400">{u.email}</p>
                 <p className="text-xs text-gray-400">Score: {u.mentalHealthScore}</p>
               </div>
               {u.isFlaggedUrgent && <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">urgent</span>}
