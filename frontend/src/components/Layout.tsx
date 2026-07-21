@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import SOSButton from "./SOSButton";
+import NotificationBell from "./NotificationBell";
 
 const linksByRole: Record<string, { to: string; label: string }[]> = {
   user: [
@@ -9,6 +10,7 @@ const linksByRole: Record<string, { to: string; label: string }[]> = {
     { to: "/mood", label: "Mood Tracker" },
     { to: "/journal", label: "Journal" },
     { to: "/chat", label: "Mentor Chat" },
+    { to: "/messages", label: "Messages" },
     { to: "/resources", label: "Resources" },
     { to: "/settings", label: "Settings" },
   ],
@@ -42,6 +44,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             {user ? (
               <>
+                <NotificationBell />
                 <span className="text-sm text-gray-500 hidden sm:inline">{user.anonymousUsername}</span>
                 <button
                   className="btn-secondary text-sm"

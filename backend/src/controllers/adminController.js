@@ -113,6 +113,8 @@ exports.resolveReport = async (req, res, next) => {
       } else if (report.targetType === "comment") {
         const Comment = require("../models/Comment");
         await Comment.findByIdAndUpdate(report.targetId, { isRemoved: true });
+      } else if (report.targetType === "user") {
+        await User.findByIdAndUpdate(report.targetId, { isActive: false });
       }
     }
     res.json({ report });

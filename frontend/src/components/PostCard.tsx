@@ -1,15 +1,44 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Post } from "../types";
 import { api } from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 
 export default function PostCard({ post }: { post: Post }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [likes, setLikes] = useState(post.likesCount);
   const [liked, setLiked] = useState(false);
+  const [messaging, setMessaging] = useState(false);
+  const [reported, setReported] = useState(false);
+  const [error, setError] = useState("");
+
+  const isOwnPost = user?._id === post.author?._id;
 
   async function toggleLike() {
     const res = await api.post(`/posts/${post._id}/like`);
     setLiked(res.data.liked);
     setLikes((l) => (res.data.liked ? l + 1 : l - 1));
+  }
+
+  async function messageAuthor() {
+    setError("");
+    setMessaging(true);
+    try {
+      const res = await api.post("/mentor/conversations/peer", { otherUserId: post.author._id });
+      navigate("/messages", { state: { conversationId: res.data.conversation._id } });
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Couldn't start a chat with this person.");
+    } finally {
+      setMessaging(false);
+    }
+  }
+
+  async function reportPost() {
+    const reason = window.prompt("What's wrong with this post? (a short reason helps moderators)");
+    if (reason === null) return;
+    await api.post("/posts/report", { targetType: "post", targetId: post._id, reason: reason || "Reported by user" });
+    setReported(true);
   }
 
   return (
@@ -30,8 +59,20 @@ export default function PostCard({ post }: { post: Post }) {
           ♥ {likes}
         </button>
         <span>💬 {post.commentsCount}</span>
+        {!isOwnPost && (
+          <button onClick={messageAuthor} disabled={messaging} className="text-xs text-equilibrium-blue hover:underline disabled:opacity-50">
+            {messaging ? "Starting..." : "Message"}
+          </button>
+        )}
+        {!isOwnPost && !reported && (
+          <button onClick={reportPost} className="text-xs text-gray-400 hover:text-red-500">
+            Report
+          </button>
+        )}
+        {reported && <span className="text-xs text-gray-400">Reported</span>}
         <span className="ml-auto text-xs">{new Date(post.createdAt).toLocaleString()}</span>
       </div>
+      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
     </div>
   );
 }

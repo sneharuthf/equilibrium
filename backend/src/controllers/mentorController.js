@@ -4,7 +4,9 @@ const AIAnalysis = require("../models/AIAnalysis");
 const EmergencyAlert = require("../models/EmergencyAlert");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
+const Notification = require("../models/Notification");
 const { containsProfanity, cleanText } = require("../middleware/profanityFilter");
+const { isBlockedEitherWay } = require("./blockController");
 
 exports.myAssignedUsers = async (req, res, next) => {
   try {
@@ -105,6 +107,10 @@ exports.startPeerChat = async (req, res, next) => {
     const other = await User.findOne({ _id: otherUserId, isActive: true });
     if (!other) return res.status(404).json({ message: "User not found" });
 
+    if (await isBlockedEitherWay(req.user._id, otherUserId)) {
+      return res.status(403).json({ message: "You can't message this person" });
+    }
+
     let convo = await Conversation.findOne({
       type: "peer",
       participants: { $all: [req.user._id, otherUserId], $size: 2 },
@@ -156,6 +162,11 @@ exports.sendMessage = async (req, res, next) => {
     if (access === null) return res.status(404).json({ message: "Conversation not found" });
     if (access === false) return res.status(403).json({ message: "You're not part of this conversation" });
 
+    const otherId = access.participants.find((p) => p.toString() !== req.user._id.toString());
+    if (otherId && (await isBlockedEitherWay(req.user._id, otherId))) {
+      return res.status(403).json({ message: "You can't message this person" });
+    }
+
     const { content, fileUrl } = req.body;
     if (!content || !content.trim()) return res.status(400).json({ message: "Message content is required" });
 
@@ -168,6 +179,15 @@ exports.sendMessage = async (req, res, next) => {
       fileUrl: fileUrl || null,
     });
     await Conversation.findByIdAndUpdate(req.params.conversationId, { lastMessageAt: new Date() });
+
+    if (otherId) {
+      await Notification.create({
+        user: otherId,
+        type: "new_message",
+        message: `${req.user.anonymousUsername} sent you a message.`,
+        relatedConversation: req.params.conversationId,
+      });
+    }
 
     res.status(201).json({ message });
   } catch (err) {

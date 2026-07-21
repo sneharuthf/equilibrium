@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PeerChat from "./pages/PeerChat";
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/journal" element={<ProtectedRoute allow={["user"]}><Journal /></ProtectedRoute>} />
         <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute allow={["user", "mentor"]}><MentorChat /></ProtectedRoute>} />
+        <Route path="/messages" element={<ProtectedRoute allow={["user"]}><PeerChat /></ProtectedRoute>} />
         <Route path="/mentor" element={<ProtectedRoute allow={["mentor"]}><MentorDashboard /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute allow={["admin"]}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

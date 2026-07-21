@@ -115,7 +115,17 @@ exports.likePost = async (req, res, next) => {
       return res.json({ liked: false });
     }
     await Like.create({ post: req.params.id, user: req.user._id });
-    await Post.findByIdAndUpdate(req.params.id, { $inc: { likesCount: 1 } });
+    const post = await Post.findByIdAndUpdate(req.params.id, { $inc: { likesCount: 1 } }, { new: true });
+
+    if (post && post.author.toString() !== req.user._id.toString()) {
+      await Notification.create({
+        user: post.author,
+        type: "post_like",
+        message: `${req.user.anonymousUsername} liked your post.`,
+        relatedPost: post._id,
+      });
+    }
+
     res.json({ liked: true });
   } catch (err) {
     next(err);

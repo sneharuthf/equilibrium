@@ -125,7 +125,9 @@ export default function AdminDashboard() {
                 </p>
                 <p className="text-xs text-gray-400">{r.reason}</p>
                 <div className="flex gap-2 mt-1">
-                  <button onClick={() => resolveReport(r._id, "reviewed", true)} className="text-xs text-red-600">Remove content</button>
+                  <button onClick={() => resolveReport(r._id, "reviewed", true)} className="text-xs text-red-600">
+                    {r.targetType === "user" ? "Deactivate account" : "Remove content"}
+                  </button>
                   <button onClick={() => resolveReport(r._id, "dismissed")} className="text-xs text-gray-400">Dismiss</button>
                 </div>
               </div>

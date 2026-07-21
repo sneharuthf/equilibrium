@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/axios";
 
 interface Assignment {
@@ -15,7 +16,7 @@ interface EmergencyContact {
 
 interface Alert {
   _id: string;
-  user: { anonymousUsername: string; emergencyContact?: EmergencyContact };
+  user: { _id: string; anonymousUsername: string; emergencyContact?: EmergencyContact };
   severity: string;
   reason: string;
   status: string;
@@ -23,6 +24,7 @@ interface Alert {
 }
 
 export default function MentorDashboard() {
+  const navigate = useNavigate();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export default function MentorDashboard() {
     load();
   }, []);
 
-  async function updateAlert(id: string, status: string) {
+  async function updateAlert(id: string, status: string, userId?: string) {
     setError("");
     setUpdatingId(id);
     try {
@@ -51,6 +53,11 @@ export default function MentorDashboard() {
         setAlerts((prev) => prev.filter((a) => a._id !== id));
       } else {
         setAlerts((prev) => prev.map((a) => (a._id === id ? { ...a, status } : a)));
+      }
+
+      if (status === "acknowledged" && userId) {
+        const convoRes = await api.post("/mentor/conversations/with-user", { userId });
+        navigate("/chat", { state: { conversationId: convoRes.data.conversation._id } });
       }
     } catch (err: any) {
       setError(err?.response?.data?.message || "Couldn't update that alert. Try refreshing the page.");
@@ -96,11 +103,11 @@ export default function MentorDashboard() {
 
                   <div className="flex gap-2 mt-2">
                     <button
-                      onClick={() => updateAlert(a._id, "acknowledged")}
+                      onClick={() => updateAlert(a._id, "acknowledged", a.user._id)}
                       className="btn-secondary text-xs disabled:opacity-50"
-                      disabled={updatingId === a._id || a.status === "acknowledged"}
+                      disabled={updatingId === a._id}
                     >
-                      {updatingId === a._id ? "..." : "Acknowledge"}
+                      {updatingId === a._id ? "..." : a.status === "acknowledged" ? "Acknowledged — open chat" : "Acknowledge & chat"}
                     </button>
                     <button
                       onClick={() => updateAlert(a._id, "resolved")}
