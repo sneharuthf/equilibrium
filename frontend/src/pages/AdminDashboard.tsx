@@ -27,6 +27,16 @@ interface PlatformUser {
   mentalHealthScore: number;
   isFlaggedUrgent: boolean;
   assignedMentor?: string | null;
+  recommendedTherapist?: string | null;
+}
+
+interface Therapist {
+  _id: string;
+  name: string;
+  clinicName: string;
+  specialization: string[];
+  contactEmail: string;
+  contactPhone: string;
 }
 
 const COLORS = ["#5B7FDE", "#8B7CF6", "#F59E0B", "#EF4444", "#10B981", "#6B7280"];
@@ -37,22 +47,35 @@ export default function AdminDashboard() {
   const [reports, setReports] = useState<Report[]>([]);
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [mentors, setMentors] = useState<PlatformUser[]>([]);
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [selectedMentor, setSelectedMentor] = useState<Record<string, string>>({});
+  const [selectedTherapist, setSelectedTherapist] = useState<Record<string, string>>({});
   const [assignMsg, setAssignMsg] = useState<string>("");
 
+  const [newTherapist, setNewTherapist] = useState({
+    name: "",
+    clinicName: "",
+    specialization: "",
+    contactEmail: "",
+    contactPhone: "",
+  });
+  const [savingTherapist, setSavingTherapist] = useState(false);
+
   async function load() {
-    const [o, d, r, u, m] = await Promise.all([
+    const [o, d, r, u, m, t] = await Promise.all([
       api.get("/admin/overview"),
       api.get("/admin/emotion-distribution"),
       api.get("/admin/reports"),
       api.get("/admin/users", { params: { role: "user" } }),
       api.get("/admin/users", { params: { role: "mentor" } }),
+      api.get("/admin/therapists"),
     ]);
     setOverview(o.data);
     setDistribution(d.data.distribution);
     setReports(r.data.reports);
     setUsers(u.data.users);
     setMentors(m.data.users);
+    setTherapists(t.data.therapists);
   }
 
   async function assignMentor(userId: string) {
@@ -63,6 +86,43 @@ export default function AdminDashboard() {
     }
     await api.post("/admin/assign-mentor", { userId, mentorId });
     setAssignMsg("Mentor assigned.");
+    load();
+  }
+
+  async function recommendTherapist(userId: string) {
+    const therapistId = selectedTherapist[userId];
+    if (!therapistId) {
+      setAssignMsg("Pick a therapist from the dropdown first.");
+      return;
+    }
+    await api.post("/admin/recommend-therapist", { userId, therapistId });
+    setAssignMsg("Therapist recommended.");
+    load();
+  }
+
+  async function addTherapist(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTherapist.name.trim()) return;
+    setSavingTherapist(true);
+    try {
+      await api.post("/admin/therapists", {
+        name: newTherapist.name,
+        clinicName: newTherapist.clinicName,
+        specialization: newTherapist.specialization
+          ? newTherapist.specialization.split(",").map((s) => s.trim()).filter(Boolean)
+          : [],
+        contactEmail: newTherapist.contactEmail,
+        contactPhone: newTherapist.contactPhone,
+      });
+      setNewTherapist({ name: "", clinicName: "", specialization: "", contactEmail: "", contactPhone: "" });
+      load();
+    } finally {
+      setSavingTherapist(false);
+    }
+  }
+
+  async function removeTherapist(id: string) {
+    await api.delete(`/admin/therapists/${id}`);
     load();
   }
 
@@ -90,6 +150,8 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-semibold mb-6">Admin Dashboard</h1>
+
+      {assignMsg && <div className="card p-3 mb-4 text-sm text-green-600">{assignMsg}</div>}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {stats.map((s) => (
@@ -137,11 +199,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="card p-5">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm text-gray-400">Users &amp; mentor assignment</p>
-          {assignMsg && <span className="text-xs text-green-600">{assignMsg}</span>}
-        </div>
+      <div className="card p-5 mb-6">
+        <p className="text-sm text-gray-400 mb-3">Users, mentor assignment &amp; therapist referral</p>
         <div className="space-y-3">
           {users.map((u) => (
             <div key={u._id} className="flex flex-wrap items-center gap-3 border-b border-black/5 pb-3 last:border-0">
@@ -151,23 +210,71 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-400">Score: {u.mentalHealthScore}</p>
               </div>
               {u.isFlaggedUrgent && <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">urgent</span>}
-              <span className="text-xs text-gray-400">
-                {u.assignedMentor ? "Mentor assigned" : "No mentor yet"}
-              </span>
-              <select
-                className="input w-auto ml-auto"
-                value={selectedMentor[u._id] || ""}
-                onChange={(e) => setSelectedMentor((prev) => ({ ...prev, [u._id]: e.target.value }))}
-              >
-                <option value="">Select mentor...</option>
-                {mentors.map((m) => (
-                  <option key={m._id} value={m._id}>{m.anonymousUsername}</option>
-                ))}
-              </select>
-              <button onClick={() => assignMentor(u._id)} className="btn-secondary text-xs">Assign</button>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-gray-400">{u.assignedMentor ? "Mentor assigned" : "No mentor yet"}</span>
+                <div className="flex gap-2">
+                  <select
+                    className="input w-auto text-xs"
+                    value={selectedMentor[u._id] || ""}
+                    onChange={(e) => setSelectedMentor((prev) => ({ ...prev, [u._id]: e.target.value }))}
+                  >
+                    <option value="">Select mentor...</option>
+                    {mentors.map((m) => (
+                      <option key={m._id} value={m._id}>{m.anonymousUsername}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => assignMentor(u._id)} className="btn-secondary text-xs">Assign</button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1 ml-auto">
+                <span className="text-xs text-gray-400">{u.recommendedTherapist ? "Therapist recommended" : "No referral yet"}</span>
+                <div className="flex gap-2">
+                  <select
+                    className="input w-auto text-xs"
+                    value={selectedTherapist[u._id] || ""}
+                    onChange={(e) => setSelectedTherapist((prev) => ({ ...prev, [u._id]: e.target.value }))}
+                  >
+                    <option value="">Select therapist...</option>
+                    {therapists.map((t) => (
+                      <option key={t._id} value={t._id}>{t.name}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => recommendTherapist(u._id)} className="btn-secondary text-xs">Recommend</button>
+                </div>
+              </div>
             </div>
           ))}
           {users.length === 0 && <p className="text-sm text-gray-400">No users yet.</p>}
+        </div>
+      </div>
+
+      <div className="card p-5">
+        <p className="text-sm text-gray-400 mb-3">Therapist / professional directory</p>
+
+        <form onSubmit={addTherapist} className="grid md:grid-cols-2 gap-2 mb-4 border-b border-black/5 pb-4">
+          <input className="input" placeholder="Name" value={newTherapist.name} onChange={(e) => setNewTherapist((p) => ({ ...p, name: e.target.value }))} />
+          <input className="input" placeholder="Clinic name" value={newTherapist.clinicName} onChange={(e) => setNewTherapist((p) => ({ ...p, clinicName: e.target.value }))} />
+          <input className="input" placeholder="Specialization (comma-separated)" value={newTherapist.specialization} onChange={(e) => setNewTherapist((p) => ({ ...p, specialization: e.target.value }))} />
+          <input className="input" placeholder="Contact email" value={newTherapist.contactEmail} onChange={(e) => setNewTherapist((p) => ({ ...p, contactEmail: e.target.value }))} />
+          <input className="input" placeholder="Contact phone" value={newTherapist.contactPhone} onChange={(e) => setNewTherapist((p) => ({ ...p, contactPhone: e.target.value }))} />
+          <button className="btn-primary" disabled={savingTherapist}>{savingTherapist ? "Adding..." : "Add to directory"}</button>
+        </form>
+
+        <div className="space-y-2">
+          {therapists.map((t) => (
+            <div key={t._id} className="flex justify-between items-center border-b border-black/5 pb-2 last:border-0">
+              <div>
+                <p className="text-sm font-medium">{t.name} {t.clinicName && <span className="text-xs text-gray-400">— {t.clinicName}</span>}</p>
+                <p className="text-xs text-gray-400">
+                  {t.specialization?.join(", ")} {t.contactEmail && `· ${t.contactEmail}`} {t.contactPhone && `· ${t.contactPhone}`}
+                </p>
+              </div>
+              <button onClick={() => removeTherapist(t._id)} className="text-xs text-red-500">Remove</button>
+            </div>
+          ))}
+          {therapists.length === 0 && <p className="text-sm text-gray-400">No therapists added yet.</p>}
         </div>
       </div>
     </div>
