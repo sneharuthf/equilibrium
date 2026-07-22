@@ -8,6 +8,7 @@ router.get("/overview", ctrl.overview);
 router.get("/emotion-distribution", ctrl.emotionDistribution);
 router.get("/users", ctrl.listUsers);
 router.patch("/users/:id/active", ctrl.setUserActive);
+router.post("/mentors", ctrl.createMentor);
 router.post("/assign-mentor", ctrl.assignMentor);
 router.get("/reports", ctrl.listReports);
 router.patch("/reports/:id", ctrl.resolveReport);

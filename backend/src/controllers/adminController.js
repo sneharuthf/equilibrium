@@ -91,6 +91,7 @@ exports.assignMentor = async (req, res, next) => {
   }
 };
 
+
 exports.listReports = async (req, res, next) => {
   try {
     const reports = await Report.find({ status: "pending" })
@@ -166,6 +167,51 @@ exports.recommendTherapist = async (req, res, next) => {
     const { userId, therapistId } = req.body;
     const user = await User.findByIdAndUpdate(userId, { recommendedTherapist: therapistId }, { new: true });
     res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.listMentorsForAssignment = async (req, res, next) => {
+  try {
+    const mentors = await User.find({ role: "mentor", isActive: true }).select(
+      "anonymousUsername mentorProfile"
+    );
+    res.json({ mentors });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.createMentor = async (req, res, next) => {
+  try {
+    const { email, anonymousUsername, password, bio, specialties } = req.body;
+    if (!email || !anonymousUsername || !password) {
+      return res.status(400).json({ message: "email, anonymousUsername and password are required" });
+    }
+
+    const existingEmail = await User.findOne({ email: email.toLowerCase() });
+    if (existingEmail) return res.status(409).json({ message: "Email already registered" });
+
+    const existingUsername = await User.findOne({ anonymousUsername });
+    if (existingUsername) return res.status(409).json({ message: "That username is taken" });
+
+    const bcrypt = require("bcryptjs");
+    const passwordHash = await bcrypt.hash(password, Number(process.env.BCRYPT_SALT_ROUNDS || 12));
+
+    const mentor = await User.create({
+      email: email.toLowerCase(),
+      passwordHash,
+      anonymousUsername,
+      role: "mentor",
+      isVerified: true,
+      mentorProfile: {
+        bio: bio || "",
+        specialties: Array.isArray(specialties) ? specialties : [],
+      },
+    });
+
+    res.status(201).json({ mentor });
   } catch (err) {
     next(err);
   }
