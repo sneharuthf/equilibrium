@@ -30,6 +30,14 @@ interface PlatformUser {
   recommendedTherapist?: string | null;
 }
 
+interface Mentor {
+  _id: string;
+  anonymousUsername: string;
+  email?: string;
+  isActive?: boolean;
+  mentorProfile?: { bio: string; specialties: string[] };
+}
+
 interface Therapist {
   _id: string;
   name: string;
@@ -46,11 +54,21 @@ export default function AdminDashboard() {
   const [distribution, setDistribution] = useState<{ _id: string; count: number }[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [users, setUsers] = useState<PlatformUser[]>([]);
-  const [mentors, setMentors] = useState<PlatformUser[]>([]);
+  const [mentors, setMentors] = useState<Mentor[]>([]);
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [selectedMentor, setSelectedMentor] = useState<Record<string, string>>({});
   const [selectedTherapist, setSelectedTherapist] = useState<Record<string, string>>({});
   const [assignMsg, setAssignMsg] = useState<string>("");
+
+  const [newMentor, setNewMentor] = useState({
+    email: "",
+    anonymousUsername: "",
+    password: "",
+    bio: "",
+    specialties: "",
+  });
+  const [savingMentor, setSavingMentor] = useState(false);
+  const [mentorError, setMentorError] = useState("");
 
   const [newTherapist, setNewTherapist] = useState({
     name: "",
@@ -119,6 +137,38 @@ export default function AdminDashboard() {
     } finally {
       setSavingTherapist(false);
     }
+  }
+
+  async function addMentor(e: React.FormEvent) {
+    e.preventDefault();
+    setMentorError("");
+    if (!newMentor.email.trim() || !newMentor.anonymousUsername.trim() || !newMentor.password.trim()) {
+      setMentorError("Email, username, and password are all required.");
+      return;
+    }
+    setSavingMentor(true);
+    try {
+      await api.post("/admin/mentors", {
+        email: newMentor.email,
+        anonymousUsername: newMentor.anonymousUsername,
+        password: newMentor.password,
+        bio: newMentor.bio,
+        specialties: newMentor.specialties
+          ? newMentor.specialties.split(",").map((s) => s.trim()).filter(Boolean)
+          : [],
+      });
+      setNewMentor({ email: "", anonymousUsername: "", password: "", bio: "", specialties: "" });
+      load();
+    } catch (err: any) {
+      setMentorError(err?.response?.data?.message || "Couldn't add that mentor.");
+    } finally {
+      setSavingMentor(false);
+    }
+  }
+
+  async function toggleMentorActive(id: string, isActive: boolean) {
+    await api.patch(`/admin/users/${id}/active`, { isActive: !isActive });
+    load();
   }
 
   async function removeTherapist(id: string) {
@@ -247,6 +297,42 @@ export default function AdminDashboard() {
             </div>
           ))}
           {users.length === 0 && <p className="text-sm text-gray-400">No users yet.</p>}
+        </div>
+      </div>
+
+      <div className="card p-5 mb-6">
+        <p className="text-sm text-gray-400 mb-3">Mentor directory</p>
+
+        <form onSubmit={addMentor} className="grid md:grid-cols-2 gap-2 mb-4 border-b border-black/5 pb-4">
+          <input className="input" placeholder="Email" value={newMentor.email} onChange={(e) => setNewMentor((p) => ({ ...p, email: e.target.value }))} />
+          <input className="input" placeholder="Anonymous username" value={newMentor.anonymousUsername} onChange={(e) => setNewMentor((p) => ({ ...p, anonymousUsername: e.target.value }))} />
+          <input className="input" type="password" placeholder="Temporary password" value={newMentor.password} onChange={(e) => setNewMentor((p) => ({ ...p, password: e.target.value }))} />
+          <input className="input" placeholder="Specialties (comma-separated)" value={newMentor.specialties} onChange={(e) => setNewMentor((p) => ({ ...p, specialties: e.target.value }))} />
+          <input className="input md:col-span-2" placeholder="Short bio" value={newMentor.bio} onChange={(e) => setNewMentor((p) => ({ ...p, bio: e.target.value }))} />
+          {mentorError && <p className="text-xs text-red-500 md:col-span-2">{mentorError}</p>}
+          <button className="btn-primary md:col-span-2" disabled={savingMentor}>{savingMentor ? "Adding..." : "Add mentor"}</button>
+        </form>
+
+        <div className="space-y-2">
+          {mentors.map((m) => (
+            <div key={m._id} className="flex justify-between items-center border-b border-black/5 pb-2 last:border-0">
+              <div>
+                <p className="text-sm font-medium">
+                  {m.anonymousUsername}
+                  {m.isActive === false && <span className="text-xs text-gray-400 ml-2">(deactivated)</span>}
+                </p>
+                <p className="text-xs text-gray-400">{m.email}</p>
+                {m.mentorProfile?.bio && <p className="text-xs text-gray-400 mt-0.5">{m.mentorProfile.bio}</p>}
+                {m.mentorProfile?.specialties && m.mentorProfile.specialties.length > 0 && (
+                  <p className="text-xs text-gray-400">{m.mentorProfile.specialties.join(", ")}</p>
+                )}
+              </div>
+              <button onClick={() => toggleMentorActive(m._id, m.isActive !== false)} className="text-xs text-red-500">
+                {m.isActive === false ? "Reactivate" : "Deactivate"}
+              </button>
+            </div>
+          ))}
+          {mentors.length === 0 && <p className="text-sm text-gray-400">No mentors added yet.</p>}
         </div>
       </div>
 
